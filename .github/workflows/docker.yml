@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+      - rel-1.16-maint
+      - rel-1.15-maint
+      - rel-1.14-maint
   workflow_dispatch:
 
 jobs:
@@ -12,9 +15,22 @@ jobs:
 
     env:
       MAVEN_OPTS: -Xmx1024M
-
     steps:
       - uses: actions/checkout@v2
+
+      - name: Load .env file
+        run: |
+          if [ -f .env ]; then
+            while IFS='=' read -r key value; do
+              # Skip comments and empty lines
+              [[ "$key" =~ ^#.*$ ]] && continue
+              [[ -z "$key" ]] && continue
+              # Remove leading/trailing whitespace if any
+              key=$(echo "$key" | xargs)
+              value=$(echo "$value" | xargs)
+              echo "$key=$value" >> $GITHUB_ENV
+            done < .env
+          fi
 
       - name: Clone Vitro
         run: git clone https://github.com/vivo-project/Vitro.git ../Vitro
@@ -35,7 +51,10 @@ jobs:
       - name: Maven Build
         run: |
           cd ../VIVO
-          mvn clean install -Dvivo-dir=/usr/local/vivo/home -Dapp-name=vivo -Ddefault-theme=wilma
+          mvn clean install \
+            -Dvivo-dir=${{ env.VIVO_CONTAINER_VIVO_HOME }} \
+            -Dapp-name=vivo \
+            -Ddefault-theme=wilma
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
@@ -48,7 +67,37 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      
+
+      - name: Set Docker tag
+        id: docker_tag
+        shell: bash
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          case "$REF_NAME" in
+            main)
+              tag="development"
+              ;;
+            rel-1.16-maint)
+              tag="latest"
+              ;;
+            rel-*-maint)
+              version="${REF_NAME#rel-}"
+              version="${version%-maint}"
+
+              if [[ "$version" =~ ^[0-9]+\.[0-9]+$ ]]; then
+                version="${version}.0"
+              fi
+
+              tag="vivo-${version}"
+              ;;
+            *)
+              tag="$REF_NAME"
+              ;;
+          esac
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
       - name: Build and push
         id: docker_build
         uses: docker/build-push-action@v2
@@ -56,7 +105,41 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: vivoweb/vivo:latest
+          tags: vivoweb/vivo:${{ steps.docker_tag.outputs.tag }}
+          build-args: |
+            DEFAULT_NAMESPACE=${{ env.DEFAULT_NAMESPACE }}
+            EMAIL_PASSWORD=${{ env.EMAIL_PASSWORD }}
+            EMAIL_PORT=${{ env.EMAIL_PORT }}
+            EMAIL_REPLY_TO=${{ env.EMAIL_REPLY_TO }}
+            EMAIL_SMTP_HOST=${{ env.EMAIL_SMTP_HOST }}
+            EMAIL_USERNAME=${{ env.EMAIL_USERNAME }}
+            FORCE_LOCALE=${{ env.FORCE_LOCALE }}
+            LANGUAGE_FILTER_ENABLED=${{ env.LANGUAGE_FILTER_ENABLED }}            
+            RECONFIGURE=${{ env.RECONFIGURE }}
+            ROOT_USER_ADDRESS=${{ env.ROOT_USER_ADDRESS }}
+            SAMPLE_DATA_BRANCH=${{ env.SAMPLE_DATA_BRANCH }}
+            SAMPLE_DATA_DIRECTORY=${{ env.SAMPLE_DATA_DIRECTORY }}
+            SAMPLE_DATA_LOAD=${{ env.SAMPLE_DATA_LOAD }}
+            SAMPLE_DATA_REPO_URL=${{ env.SAMPLE_DATA_REPO_URL }}
+            SEARCH_ENGINE_PASSWORD=${{ env.SEARCH_ENGINE_PASSWORD }}
+            SEARCH_ENGINE_URL=${{ env.SEARCH_ENGINE_URL }}
+            SEARCH_ENGINE_USERNAME=${{ env.SEARCH_ENGINE_USERNAME }}
+            SELECTABLE_LOCALES=${{ env.SELECTABLE_LOCALES }}
+            SELF_ID_MATCHING_PROPERTY=${{ env.SELF_ID_MATCHING_PROPERTY }}
+            SOLR_CONTAINER_PORT=${{ env.SOLR_CONTAINER_PORT }}
+            SOLR_CORES=${{ env.SOLR_CORES }}
+            SOLR_HOST_PORT=${{ env.SOLR_HOST_PORT }}
+            SOLR_RESET_CORE=${{ env.SOLR_RESET_CORE }}
+            SOLR_URL=${{ env.SOLR_URL }}
+            SOLR_VERBOSE=${{ env.SOLR_VERBOSE }}
+            TOMCAT_CONTEXT_PATH=${{ env.TOMCAT_CONTEXT_PATH }}
+            VIVO_CONTAINER_PORT=${{ env.VIVO_CONTAINER_PORT }}
+            VIVO_CONTAINER_VIVO_HOME=${{ env.VIVO_CONTAINER_VIVO_HOME }}
+            VIVO_HOST_PORT=${{ env.VIVO_HOST_PORT }}
+            VIVO_HOST_VIVO_HOME=${{ env.VIVO_HOST_VIVO_HOME }}
+            VIVO_RESET_HOME=${{ env.VIVO_RESET_HOME }}
+            VIVO_TDB_FILE_MODE=${{ env.VIVO_TDB_FILE_MODE }}
+            VIVO_VERBOSE=${{ env.VIVO_VERBOSE }}
 
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}

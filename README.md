@@ -31,41 +31,39 @@ VIVO docker container is available at [vivoweb/vivo](https://hub.docker.com/repo
 
 Docker Compose variable substitution:
 
-.env defaults
-```
-SOLR_RESET_CORE=false
-SOLR_VERBOSE=no
-
-SOLR_HOST_PORT=8983
-SOLR_CONTAINER_PORT=8983
-
-SOLR_CORES=./vivo-cores
-
-VIVO_RESET_HOME=false
-VIVO_VERBOSE=no
-
-VIVO_TDB_FILE_MODE=direct
-
-VIVO_HOST_VIVO_HOME=./vivo-home
-VIVO_CONTAINER_VIVO_HOME=/usr/local/vivo/home
-
-VIVO_HOST_PORT=8080
-VIVO_CONTAINER_PORT=8080
-```
-
-- `SOLR_RESET_CORE`: Convenience to reset VIVO Solr core when starting container. **Caution**, will require complete reindex.
-- `SOLR_VERBOSE`: Increase log verbosity.
-- `SOLR_HOST_PORT`: Host port binding for solr service port mapping.
-- `SOLR_CONTAINER_PORT`: Container port binding for solr service port mapping.
-- `SOLR_CORES`: Solr cores data directories on your host machine which will mount to volume in docker container. Set this environment variable to persist your Solr data on your host machine.
-
-- `VIVO_RESET_HOME`: Convenience to reset VIVO home when starting container. **Caution**, will delete local configuration, content, and configuration model.
-- `VIVO_VERBOSE`: Increase log verbosity.
-- `VIVO_TDB_FILE_MODE`: TDB file mode. See https://jena.apache.org/documentation/tdb/configuration.html#file-access-mode.
-- `VIVO_HOST_VIVO_HOME`: VIVO home directory on your host machine which will mount to volume in docker container. Set this environment variable to persist your VIVO data on your host machine.
-- `VIVO_CONTAINER_VIVO_HOME`: VIVO home directory within the container.
-- `VIVO_HOST_PORT`: Host port binding for VIVO Tomcat service port mapping.
-- `VIVO_CONTAINER_PORT`: Container port binding for VIVO Tomcat service port mapping.
+| Variable | Description | Default value |
+| --- | --- | --- |
+| `DEFAULT_NAMESPACE` | Default namespace used when generating URIs for objects created in the editor. | `http://vivo.mydomain.edu/individual/` |
+| `EMAIL_PASSWORD` | Password for the SMTP email server. | `""` |
+| `EMAIL_PORT` | Port number for the SMTP email server (e.g. 25 or 587). | `""` |
+| `EMAIL_REPLY_TO` | Reply-to email address for VIVO notifications. | `""` |
+| `EMAIL_SMTP_HOST` | Hostname or IP address of the SMTP email server. | `""` |
+| `EMAIL_USERNAME` | Username for authenticating with the SMTP email server. | `""` |
+| `FORCE_LOCALE` | Force VIVO to use a specific language or locale. | `""` |
+| `LANGUAGE_FILTER_ENABLED` | Show only the most appropriate data values based on Accept-Language header (`true`/`false`). | `""` |
+| `RECONFIGURE` | Re-template `runtime.properties` upon container startup (`true`/`false`). | `false` |
+| `ROOT_USER_ADDRESS` | Email address of the initial root administrator user. | `vivo_root@mydomain.edu` |
+| `SAMPLE_DATA_BRANCH` | Git branch of the sample data repository to clone. | `main` |
+| `SAMPLE_DATA_DIRECTORY` | Subdirectory within the sample data repository containing RDF files. | `openvivo` |
+| `SAMPLE_DATA_LOAD` | Automatically load sample data into VIVO home on startup (`true`/`false`). | `false` |
+| `SAMPLE_DATA_REPO_URL` | Git repository URL for downloading sample data. | `https://github.com/vivo-project/sample-data.git` |
+| `SEARCH_ENGINE_PASSWORD` | Basic authentication password for the search engine (Solr/Elasticsearch/OpenSearch). | `""` |
+| `SEARCH_ENGINE_URL` | URL of the generic search engine context. | `http://localhost:8983/solr/vivocore` |
+| `SEARCH_ENGINE_USERNAME` | Basic authentication username for the search engine. | `""` |
+| `SELECTABLE_LOCALES` | Comma-separated ordered list of locales offered in the language selector dropdown. | `en_US` |
+| `SELF_ID_MATCHING_PROPERTY` | URI for the property used to associate a logged-in user with an Individual profile. | `http://vivo.mydomain.edu/ns#networkId` |
+| `SOLR_RESET_CORE` | Convenience to reset VIVO Solr core when starting container. **Caution**, will require complete reindex. | `false` |
+| `SOLR_VERBOSE` | Increase log verbosity. | `no` |
+| `SOLR_HOST_PORT` | Host port binding for solr service port mapping. | `8983` |
+| `SOLR_CONTAINER_PORT` | Container port binding for solr service port mapping. | `8983` |
+| `SOLR_CORES` | Solr cores data directories on your host machine which will mount to volume in docker container. Set this environment variable to persist your Solr data on your host machine. | `./vivo-cores` |
+| `VIVO_RESET_HOME` | Convenience to reset VIVO home when starting container. **Caution**, will delete local configuration, content, and configuration model. | `false` |
+| `VIVO_VERBOSE` | Increase log verbosity. | `no` |
+| `VIVO_TDB_FILE_MODE` | TDB file mode. See https://jena.apache.org/documentation/tdb/configuration.html#file-access-mode. | `direct` |
+| `VIVO_HOST_VIVO_HOME` | VIVO home directory on your host machine which will mount to volume in docker container. Set this environment variable to persist your VIVO data on your host machine. | `./vivo-home` |
+| `VIVO_CONTAINER_VIVO_HOME` | VIVO home directory within the container. | `/usr/local/vivo/home` |
+| `VIVO_HOST_PORT` | Host port binding for VIVO Tomcat service port mapping. | `8080` |
+| `VIVO_CONTAINER_PORT` | Container port binding for VIVO Tomcat service port mapping. | `8080` |
 
 Before building VIVO, you will also need to clone (and switch to the same branch, if other than main) of [Vitro](https://github.com/vivo-project/Vitro). The Vitro project must be cloned to a sibling directory next to VIVO so that it can be found during the build. 
 
