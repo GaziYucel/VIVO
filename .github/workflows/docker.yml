@@ -3,7 +3,9 @@ name: Docker
 on:
   push:
     branches:
-      - main
+      # - main
+      # - 'rel-*-maint'
+      - i4018
   workflow_dispatch:
 
 jobs:
@@ -12,9 +14,34 @@ jobs:
 
     env:
       MAVEN_OPTS: -Xmx1024M
+      BRANCH_DEVELOPMENT: main
+      BRANCH_LATEST: rel-1.16-maint
 
     steps:
       - uses: actions/checkout@v2
+
+      - name: Load .env file
+        shell: bash
+        run: |
+          [[ -f .env ]] || { echo "::error::.env file is required but was not found"; exit 1; }
+      
+          while IFS= read -r line || [[ -n "$line" ]]; do
+            line="${line#"${line%%[![:space:]]*}"}"
+            line="${line%"${line##*[![:space:]]}"}"
+      
+            [[ -z "$line" || "$line" == \#* || "$line" != *=* ]] && continue
+      
+            key="${line%%=*}"
+            value="${line#*=}"
+      
+            key="${key#"${key%%[![:space:]]*}"}"
+            key="${key%"${key##*[![:space:]]}"}"
+            value="${value#"${value%%[![:space:]]*}"}"
+            value="${value%"${value##*[![:space:]]}"}"
+      
+            [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
+            printf '%s=%s\n' "$key" "$value" >> "$GITHUB_ENV"
+          done < .env
 
       - name: Clone Vitro
         run: git clone https://github.com/vivo-project/Vitro.git ../Vitro
@@ -35,9 +62,12 @@ jobs:
       - name: Maven Build
         run: |
           cd ../VIVO
-          mvn clean install -Dvivo-dir=/usr/local/vivo/home -Dapp-name=vivo -Ddefault-theme=wilma
+          mvn clean install \
+            -Dvivo-dir=${{ env.VIVO_CONTAINER_VIVO_HOME }} \
+            -Dapp-name=vivo \
+            -Ddefault-theme=wilma
 
-      - name: Set up QEMU
+      - name: Set up Docker QEMU
         uses: docker/setup-qemu-action@v1
 
       - name: Set up Docker Buildx
@@ -48,15 +78,42 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Determine Docker tag
+        id: docker_tag
+        shell: bash
+        run: |
+          branch="${GITHUB_REF_NAME}"
       
-      - name: Build and push
+          if [[ "$branch" == ${{ env.BRANCH_DEVELOPMENT }} ]]; then
+          DOCKER_TAG="development"
+          elif [[ "$branch" == "i4018" ]]; then
+          DOCKER_TAG="development"
+          elif [[ "$branch" == ${{ env.BRANCH_LATEST }} ]]; then
+          DOCKER_TAG="latest"
+          elif [[ "$branch" =~ ^rel-([0-9]+\.[0-9]+)\.([0-9]+)-maint$ ]]; then
+          DOCKER_TAG="vivo-${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
+          elif [[ "$branch" =~ ^rel-([0-9]+\.[0-9]+)-maint$ ]]; then
+          DOCKER_TAG="vivo-${BASH_REMATCH[1]}.0"
+          else
+          echo "::error::Cannot determine Docker tag for branch '$branch'"
+          exit 1
+          fi
+      
+          echo "DOCKER_TAG=$DOCKER_TAG" >> "$GITHUB_ENV"
+          echo "Docker tag: $DOCKER_TAG"
+
+      - name: Docker build and push
         id: docker_build
         uses: docker/build-push-action@v2
         with:
           context: .
           file: ./Dockerfile
           push: true
-          tags: vivoweb/vivo:latest
+          tags: vivoweb/vivo:${{ env.DOCKER_TAG }}
+          build-args: |
+            VIVO_CONTAINER_VIVO_HOME=${{ env.VIVO_CONTAINER_VIVO_HOME }}
+            TOMCAT_CONTEXT_PATH=${{ env.TOMCAT_CONTEXT_PATH }}
 
-      - name: Image digest
+      - name: Docker image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
