@@ -1,0 +1,8 @@
+# Ignore everything by default
+*
+
+# Include only files and directories required by Dockerfile
+!home/src/main/resources/config
+!home/src/main/resources/config/**
+!installer/webapp/target/vivo.war
+!start.sh
